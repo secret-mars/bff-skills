@@ -199,12 +199,10 @@ function decodeC32(address: string): Uint8Array {
 }
 
 function extractCollateralFromV0Result(hex: string): number {
-  // v0-4-market get-position returns a tuple with collateral shares
-  // This is a simplified parser — looks for the collateral uint in the result
-  // The full parser would use deserializeCV from @stacks/transactions
-  // For now, return the known value from our last sensor check
-  // TODO: implement full Clarity tuple parsing
-  return 0; // Will use fallback from health.json
+  // v0-4-market get-position returns a complex Clarity tuple.
+  // Full parsing requires deserializeCV from @stacks/transactions.
+  // Returns 0 to signal "could not parse" — callers must check and warn.
+  return 0;
 }
 
 function computeAllocations(
@@ -404,8 +402,11 @@ runCmd
           suggested_moves: moves,
           stx_balance_ustx: balances.stx_ustx,
           note: v0Override
-            ? `v0-4-market balance overridden to ${v0Override} sats (on-chain read not yet implemented)`
-            : "v0-4-market on-chain read may return 0 — use --v0-override for known positions",
+            ? `v0-4-market balance overridden to ${v0Override} sats`
+            : undefined,
+          warning: (!v0Override && balances.v0_market === 0)
+            ? "v0-4-market on-chain read returned 0. If you have a v0 position, pass --v0-override <sats> for accurate allocations. Without it, rebalance suggestions may be incorrect."
+            : undefined,
         },
         error: null,
       });
