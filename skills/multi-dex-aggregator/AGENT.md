@@ -1,3 +1,9 @@
+---
+name: multi-dex-aggregator-agent
+skill: multi-dex-aggregator
+description: "Agent behavior for the Multi-DEX Quote Aggregator — best-rate routing across Bitflow and ALEX."
+---
+
 # Multi-DEX Aggregator — Agent Decision Guide
 
 ## When to use this skill

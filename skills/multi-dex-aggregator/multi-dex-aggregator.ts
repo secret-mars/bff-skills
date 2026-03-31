@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env bun
 /**
  * Multi-DEX Quote Aggregator — Compare Bitflow + ALEX, execute on best rate
  *
@@ -18,8 +18,8 @@ const HIRO_API = "https://api.hiro.so";
 const SBTC_CONTRACT = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token";
 
 // Safety defaults — hardcoded, not configurable without code change
-const MAX_SWAP_SBTC_SATS = 500_000;
-const MAX_SWAP_STX = 100; // human units
+const MAX_SWAP_SBTC = 0.005; // 500k sats expressed in human sBTC units
+const MAX_SWAP_STX = 100;    // human units
 const MIN_GAS_USTX = 100_000;
 
 // Token registry: maps human symbols to DEX-specific identifiers
@@ -95,8 +95,8 @@ async function doctor(): Promise<void> {
   }
 
   // MCP tools (required — these handle actual DEX interactions)
-  checks["mcp_bitflow"] = { ok: true, detail: "bitflow_get_quote + bitflow_swap" };
-  checks["mcp_alex"] = { ok: true, detail: "alex_get_swap_quote + alex_swap" };
+  checks["mcp_bitflow"] = { ok: "unverifiable_at_cli", detail: "bitflow_get_quote + bitflow_swap — MCP tools are injected at agent runtime, cannot verify from CLI" };
+  checks["mcp_alex"] = { ok: "unverifiable_at_cli", detail: "alex_get_swap_quote + alex_swap — agent must confirm MCP availability before swap" };
 
   const allOk = Object.values(checks).every((c) => c.ok);
   emit({
@@ -106,7 +106,7 @@ async function doctor(): Promise<void> {
       checks,
       address,
       supported_tokens: Object.keys(TOKENS),
-      spend_limits: { sbtc_max_sats: MAX_SWAP_SBTC_SATS, stx_max: MAX_SWAP_STX },
+      spend_limits: { sbtc_max: MAX_SWAP_SBTC, sbtc_max_sats: MAX_SWAP_SBTC * 1e8, stx_max: MAX_SWAP_STX },
     },
     error: allOk ? null : { code: "doctor_failed", message: "See checks", next: "Fix issues above" },
   });
@@ -177,10 +177,10 @@ async function swap(address: string, fromSym: string, toSym: string, amount: str
     return;
   }
 
-  // Spend limit enforcement (hard block)
-  if (fromSym === "sBTC" && amountNum > MAX_SWAP_SBTC_SATS) {
-    emit({ status: "blocked", action: "Reduce amount", data: { requested: amountNum, max: MAX_SWAP_SBTC_SATS },
-      error: { code: "exceeds_limit", message: `${amountNum} sats > max ${MAX_SWAP_SBTC_SATS}`, next: "Use smaller amount" } });
+  // Spend limit enforcement (hard block) — amount is in human units
+  if (fromSym === "sBTC" && amountNum > MAX_SWAP_SBTC) {
+    emit({ status: "blocked", action: "Reduce amount", data: { requested: amountNum, max: MAX_SWAP_SBTC },
+      error: { code: "exceeds_limit", message: `${amountNum} sBTC > max ${MAX_SWAP_SBTC} sBTC (${MAX_SWAP_SBTC * 1e8} sats)`, next: "Use smaller amount" } });
     return;
   }
   if (fromSym === "STX" && amountNum > MAX_SWAP_STX) {
@@ -203,9 +203,10 @@ async function swap(address: string, fromSym: string, toSym: string, amount: str
       error: { code: "insufficient_balance", message: `Need ${amountNum * 1_000_000 + MIN_GAS_USTX} uSTX, have ${stx_ustx}`, next: "Reduce amount" } });
     return;
   }
-  if (fromSym === "sBTC" && sbtc_sats < amountNum) {
-    emit({ status: "blocked", action: "Insufficient sBTC", data: { available: sbtc_sats, needed: amountNum },
-      error: { code: "insufficient_balance", message: `Need ${amountNum} sats, have ${sbtc_sats}`, next: "Reduce amount" } });
+  const amountSats = fromSym === "sBTC" ? amountNum * 1e8 : 0;
+  if (fromSym === "sBTC" && sbtc_sats < amountSats) {
+    emit({ status: "blocked", action: "Insufficient sBTC", data: { available_sats: sbtc_sats, needed_sats: amountSats },
+      error: { code: "insufficient_balance", message: `Need ${amountSats} sats (${amountNum} sBTC), have ${sbtc_sats}`, next: "Reduce amount" } });
     return;
   }
 

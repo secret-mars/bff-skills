@@ -53,7 +53,7 @@ No additional packages — uses native fetch API.
 
 Not all tokens are available on both DEXes. When a token is only on one DEX, the skill returns a single-DEX quote and notes the limitation.
 
-## Output Contract
+## Output contract
 
 ```json
 {
@@ -80,7 +80,7 @@ Not all tokens are available on both DEXes. When a token is only on one DEX, the
 }
 ```
 
-## Safety Controls
+## Safety notes
 
 - **Spend limits enforced in code:** sBTC max 500,000 sats, STX max 100 per swap. Hard block if exceeded.
 - **Balance validation:** Checks on-chain balance before generating swap command. Blocks if insufficient.
