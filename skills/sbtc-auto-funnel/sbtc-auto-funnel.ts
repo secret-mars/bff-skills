@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env bun
 /**
  * sBTC Auto-Funnel — Route excess sBTC above reserve to Zest yield
  *
@@ -9,6 +9,8 @@
  * - Zest supply 70k: aed49fc3d702655343f2b983109b6ecb9d0f37b07c7a2a1198338689f67d7543
  * - Zest supply 175k: previous cycle (confirmed on-chain)
  */
+
+import { Command } from "commander";
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -34,38 +36,6 @@ interface SkillOutput {
 
 function emit(result: SkillOutput): void {
   console.log(JSON.stringify(result, null, 2));
-}
-
-function parseArgs(): { command: string; action: string; reserve: number; address: string } {
-  const args = process.argv.slice(2);
-  const command = args[0] || "doctor";
-  let action = "check";
-  let reserve = DEFAULT_RESERVE_SATS;
-  let address = "";
-
-  for (let i = 1; i < args.length; i++) {
-    const arg = args[i];
-    // Handle --flag=value and --flag value formats
-    const eqMatch = arg.match(/^--(\w+)=(.+)$/);
-    if (eqMatch) {
-      const [, key, val] = eqMatch;
-      if (key === "action") action = val;
-      else if (key === "reserve") {
-        const parsed = parseInt(val, 10);
-        if (!isNaN(parsed)) reserve = Math.max(parsed, MIN_RESERVE_SATS);
-      }
-      else if (key === "address") address = val;
-    } else if (arg === "--action" && args[i + 1]) {
-      action = args[++i];
-    } else if (arg === "--reserve" && args[i + 1]) {
-      const parsed = parseInt(args[++i], 10);
-      if (!isNaN(parsed)) reserve = Math.max(parsed, MIN_RESERVE_SATS);
-    } else if (arg === "--address" && args[i + 1]) {
-      address = args[++i];
-    }
-  }
-
-  return { command, action, reserve, address };
 }
 
 // ── Balance Reads ──────────────────────────────────────────────────────
@@ -127,7 +97,7 @@ async function doctor(address: string): Promise<void> {
 
   // Check sBTC balance readable
   try {
-    const bal = await getSbtcBalance(address);
+    await getSbtcBalance(address);
     checks.sbtc_readable = true;
   } catch {
     checks.sbtc_readable = false;
@@ -268,51 +238,63 @@ async function funnel(address: string, reserve: number): Promise<void> {
   });
 }
 
-// ── Main ───────────────────────────────────────────────────────────────
+// ── CLI (Commander.js) ────────────────────────────────────────────────
 
-async function main(): Promise<void> {
-  const { command, action, reserve, address } = parseArgs();
+const program = new Command();
 
-  switch (command) {
-    case "doctor":
-      await doctor(address);
-      break;
-    case "run":
-      switch (action) {
-        case "check":
-          await check(address, reserve);
-          break;
-        case "funnel":
-          await funnel(address, reserve);
-          break;
-        default:
-          emit({
-            status: "error",
-            action: `Unknown action: ${action}`,
-            data: { valid_actions: ["check", "funnel"] },
-            error: { code: "BAD_ACTION", message: `Unknown action '${action}'`, next: "Use --action=check or --action=funnel" },
-          });
-      }
-      break;
-    case "install-packs":
-      emit({
-        status: "success",
-        action: "No additional packages required — uses native fetch API",
-        data: {},
-        error: null,
-      });
-      break;
-    default:
-      emit({
-        status: "error",
-        action: `Unknown command: ${command}`,
-        data: { valid_commands: ["doctor", "run", "install-packs"] },
-        error: { code: "BAD_CMD", message: `Unknown command '${command}'`, next: "Use doctor, run, or install-packs" },
-      });
-  }
-}
+program
+  .name("sbtc-auto-funnel")
+  .description("Route excess sBTC above reserve to Zest yield");
 
-main().catch((err) => {
+program
+  .command("doctor")
+  .description("Pre-flight checks: wallet, API, gas")
+  .option("--address <stx_address>", "Stacks address")
+  .action(async (opts: { address?: string }) => {
+    await doctor(opts.address || "");
+  });
+
+program
+  .command("run")
+  .description("Check balance or funnel excess to Zest")
+  .requiredOption("--action <action>", "Action to perform: check | funnel")
+  .option("--address <stx_address>", "Stacks address")
+  .option("--reserve <sats>", "Reserve threshold in sats", String(DEFAULT_RESERVE_SATS))
+  .action(async (opts: { action: string; address?: string; reserve: string }) => {
+    const address = opts.address || "";
+    const parsedReserve = parseInt(opts.reserve, 10);
+    const reserve = isNaN(parsedReserve) ? DEFAULT_RESERVE_SATS : Math.max(parsedReserve, MIN_RESERVE_SATS);
+
+    switch (opts.action) {
+      case "check":
+        await check(address, reserve);
+        break;
+      case "funnel":
+        await funnel(address, reserve);
+        break;
+      default:
+        emit({
+          status: "error",
+          action: `Unknown action: ${opts.action}`,
+          data: { valid_actions: ["check", "funnel"] },
+          error: { code: "BAD_ACTION", message: `Unknown action '${opts.action}'`, next: "Use --action=check or --action=funnel" },
+        });
+    }
+  });
+
+program
+  .command("install-packs")
+  .description("Install dependencies (none required)")
+  .action(() => {
+    emit({
+      status: "success",
+      action: "No additional packages required — uses native fetch API",
+      data: {},
+      error: null,
+    });
+  });
+
+program.parseAsync().catch((err) => {
   emit({
     status: "error",
     action: "Unexpected error",

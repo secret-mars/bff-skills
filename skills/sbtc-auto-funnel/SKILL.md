@@ -49,7 +49,7 @@ bun run sbtc-auto-funnel/sbtc-auto-funnel.ts run --action=funnel
 ### `install-packs`
 No additional packages required.
 
-## Safety Controls
+## Safety notes
 
 - **Reserve floor enforced in code:** Default 200,000 sats. Hard-coded minimum 50,000 sats — cannot be set lower.
 - **Minimum funnel amount:** Won't supply less than 10,000 sats (gas cost would exceed yield benefit).
@@ -58,7 +58,7 @@ No additional packages required.
 - **No auto-execute:** Outputs the `zest_supply` MCP command payload. Agent decides whether to broadcast.
 - **Balance verification:** Reads on-chain balance via API, not cached values. Stale data cannot trigger a supply.
 
-## Output Contract
+## Output contract
 
 ```json
 {

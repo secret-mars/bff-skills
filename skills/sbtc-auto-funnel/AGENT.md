@@ -1,3 +1,9 @@
+---
+name: sbtc-auto-funnel-agent
+skill: sbtc-auto-funnel
+description: "Agent behavior rules for the sBTC auto-funnel skill."
+---
+
 # sBTC Auto-Funnel — Agent Decision Guide
 
 ## When to use this skill
