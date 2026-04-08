@@ -1,20 +1,21 @@
 ---
 name: styx-bridge-monitor
-description: Monitor Styx BTC-to-sBTC bridge health — pool liquidity, deposit tracking, fee timing, and alerts for agents that depend on fast BTC bridging.
-author: secret-mars
-author_agent: Secret Mars
-user-invocable: true
-arguments: doctor | run | install-packs
-entry: styx-bridge-monitor/styx-bridge-monitor.ts
-requires: [settings]
-tags: [defi, read, mainnet-only, l1, l2]
+description: "Monitor Styx BTC-to-sBTC bridge health — pool liquidity, deposit tracking, fee timing, and alerts for agents that depend on fast BTC bridging."
+metadata:
+  author: "secret-mars"
+  author-agent: "Secret Mars"
+  user-invocable: "true"
+  arguments: "doctor | run --action=status | run --action=fees | run --action=deposits | install-packs"
+  entry: "styx-bridge-monitor/styx-bridge-monitor.ts"
+  requires: "settings"
+  tags: "defi, read-only, mainnet-only, l1, l2"
 ---
 
 # Styx Bridge Monitor
 
 ## What it does
 
-Monitors the Styx protocol that agents use to bridge BTC to sBTC without the native sBTC deposit queue delay. Tracks pool liquidity across both pools (main: 400k sat max, aibtc: 1M sat max), checks BTC fee environment for optimal deposit timing, retrieves deposit history and pending status, and raises alerts when liquidity drops or fees spike.
+Monitors the Styx protocol that agents use to bridge BTC to sBTC without the native sBTC deposit queue delay. Reads pool state directly from the `SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ.styx-v1` contract on Stacks mainnet. Tracks pool liquidity, checks BTC fee environment for optimal deposit timing, and raises alerts when liquidity drops or fees spike.
 
 ## Why agents need it
 
@@ -24,40 +25,27 @@ Any agent that bridges BTC to sBTC through Styx needs to know: is the pool liqui
 
 | Command | Description |
 |---------|-------------|
-| `doctor` | Checks Styx API reachability, both pool statuses, BTC fee levels, and wallet configuration |
-| `run --action=status` | Full bridge health: both pools, fees, price, alerts, recommended pool |
-| `run --action=pools` | Detailed info on both Styx pools including contract addresses and capacity |
-| `run --action=deposits` | Deposit history for the configured wallet — shows recent and pending deposits |
+| `doctor` | Checks Styx contract reachability, pool liquidity, BTC fee levels, and wallet configuration |
+| `run --action=status` | Full bridge health: pool capacity, fees, price, utilization, alerts, recommended timing |
 | `run --action=fees` | BTC fee analysis with estimated deposit costs and timing recommendation |
-| `install-packs` | Reports dependencies (none required — uses built-in fetch) |
+| `run --action=deposits` | Wallet sBTC balance check against pool availability |
+| `install-packs` | Reports dependencies (@stacks/transactions, @stacks/network) |
 
 ## On-chain proof
 
-Tested against live Styx mainnet pools on April 8, 2026:
+Tested against live Styx mainnet contract on April 8, 2026:
 
 | Check | Result |
 |-------|--------|
-| Main pool status | 3,000,000 sats realAvailable — healthy |
-| AIBTC pool status | Active, accepting deposits up to 1M sats |
-| Fee environment | 1 sat/vB all levels — optimal deposit window |
-| Pool contracts verified | `SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ.styx-v1` (main), `SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.btc2sbtc` (aibtc) |
-
-## Output contract
-
-All commands return structured JSON:
-
-```json
-{
-  "status": "success | error | blocked",
-  "action": "recommended next step",
-  "data": {},
-  "error": { "code": "", "message": "", "next": "" }
-}
-```
+| Main pool status | 1,964,189 sats sBTC available (90% utilization) |
+| Pool total | 20,194,421 sats total sBTC in pool |
+| Protocol fee | 3,000 sats per deposit |
+| Fee environment | 1 sat/vB — optimal deposit window |
+| Contract | `SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ.styx-v1` verified active |
 
 ## Safety notes
 
 - **Read-only.** This skill does not submit transactions or move funds. It only queries pool status, fees, and deposit history.
-- **No wallet required for pool monitoring.** The `status`, `pools`, and `fees` actions work without a configured wallet. Only `deposits` needs a STACKS_ADDRESS to look up history.
-- **Alert thresholds.** Low liquidity alert at <50,000 sats available. High fee alert at >50 sat/vB. Both are configurable in the source.
-- **API dependency.** Relies on Styx API (`styx.nocturnallabs.xyz`), mempool.space for fees. If either is down, the affected check returns an error status — other checks still run.
+- **No wallet required for pool monitoring.** The `status`, `fees` actions work without a configured wallet. Only `deposits` needs a STACKS_ADDRESS.
+- **Alert thresholds.** Low liquidity alert at <50,000 sats available. High fee alert at >50 sat/vB.
+- **API dependency.** Reads from Styx contract via Hiro API and mempool.space for fees. If either is down, the affected check returns an error status — other checks still run.
