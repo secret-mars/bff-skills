@@ -1,3 +1,9 @@
+---
+name: styx-bridge-monitor-agent
+skill: styx-bridge-monitor
+description: "Agent behavior rules for the Styx bridge monitoring skill."
+---
+
 # Agent Behavior — Styx Bridge Monitor
 
 ## Decision order

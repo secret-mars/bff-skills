@@ -140,7 +140,9 @@ async function getBtcFees(): Promise<{ fast: number; medium: number; slow: numbe
 }
 
 async function getSbtcBalance(address: string): Promise<number> {
-  const res = await fetch(`${HIRO_API}/extended/v1/address/${address}/balances`);
+  const res = await fetch(`${HIRO_API}/extended/v1/address/${address}/balances`, {
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!res.ok) throw new Error(`Failed to fetch balances: ${res.status}`);
   const data = await res.json();
   const ftKey = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token::sbtc-token";
@@ -213,7 +215,7 @@ async function doctor(): Promise<void> {
     .map(([k, c]) => `${k}: ${c.detail}`);
 
   output({
-    status: allOk ? "success" : blockers.some((b) => b.includes("styx_contract")) ? "blocked" : "success",
+    status: allOk ? "success" : blockers.some((b) => b.includes("styx_contract")) ? "blocked" : "error",
     action: allOk
       ? "Environment ready. Run with --action=status for full bridge health."
       : "Some checks failed — see details. Core monitoring may still work.",
@@ -242,8 +244,8 @@ async function runStatus(): Promise<void> {
   if (fees.medium > HIGH_FEE_SATVB) {
     alerts.push(`High BTC fees: ${fees.medium} sat/vB — deposits will be expensive`);
   }
-  if (available < MAX_DEPOSIT_SATS) {
-    alerts.push(`Reduced max deposit: ${available} sats (pool max: ${MAX_DEPOSIT_SATS})`);
+  if (available < MIN_DEPOSIT_SATS) {
+    alerts.push(`Pool below minimum deposit threshold: ${available} sats available (min: ${MIN_DEPOSIT_SATS})`);
   }
 
   // Estimate deposit cost
