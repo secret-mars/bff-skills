@@ -102,11 +102,12 @@ runCmd
       const locked = parseInt(stxData.locked, 10);
       const available = balance - locked;
       const isStacking = locked > 0;
-      const meetsMin = balance >= poxData.current_cycle.min_threshold_ustx;
+      const meetsMin = available >= poxData.current_cycle.min_threshold_ustx;
 
       const signals: string[] = [];
-      if (!isStacking && meetsMin) signals.push("ELIGIBLE: STX balance meets minimum threshold — can delegate to a pool");
-      if (!isStacking && !meetsMin) signals.push(`BELOW_MIN: Need ${((poxData.current_cycle.min_threshold_ustx - balance) / 1_000_000).toFixed(0)} more STX to meet stacking minimum`);
+      if (!isStacking && meetsMin) signals.push("ELIGIBLE: Available STX meets solo stacking minimum — can delegate to a pool");
+      if (!isStacking && !meetsMin && available > 0) signals.push("POOL_ELIGIBLE: Below solo threshold but any positive balance qualifies for pool delegation");
+      if (!isStacking && available === 0) signals.push("NO_STX: No available STX to delegate");
       if (isStacking) signals.push(`STACKING: ${(locked / 1_000_000).toFixed(2)} STX locked until burnchain height ${stxData.burnchain_unlock_height}`);
       if (isStacking && available > 1_000_000) signals.push("ADDITIONAL: Unlocked STX available — could delegate more");
 
