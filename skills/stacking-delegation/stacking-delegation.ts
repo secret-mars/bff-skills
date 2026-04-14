@@ -63,7 +63,7 @@ program
         error: null,
       });
     } catch (e: unknown) {
-      errOut("doctor", "UNREACHABLE", (e as Error).message, "Check network");
+      errOut("doctor", "UNREACHABLE", e instanceof Error ? e.message : String(e), "Check network");
     }
   });
 
@@ -133,7 +133,7 @@ runCmd
         error: null,
       });
     } catch (e: unknown) {
-      errOut("status", "FETCH_ERROR", (e as Error).message, "Check address and network");
+      errOut("status", "FETCH_ERROR", e instanceof Error ? e.message : String(e), "Check address and network");
     }
   });
 
@@ -187,7 +187,7 @@ runCmd
         error: null,
       });
     } catch (e: unknown) {
-      errOut("pox-info", "FETCH_ERROR", (e as Error).message, "Check network");
+      errOut("pox-info", "FETCH_ERROR", e instanceof Error ? e.message : String(e), "Check network");
     }
   });
 
@@ -225,7 +225,7 @@ runCmd
         error: null,
       });
     } catch (e: unknown) {
-      errOut("rewards", "FETCH_ERROR", (e as Error).message, "Check address and network");
+      errOut("rewards", "FETCH_ERROR", e instanceof Error ? e.message : String(e), "Check address and network");
     }
   });
 
@@ -238,7 +238,7 @@ program
       if (result.exitCode !== 0) throw new Error(result.stderr.toString());
       out({ status: "success", action: "install-packs", data: { installed: ["commander"] }, error: null });
     } catch (e: unknown) {
-      errOut("install-packs", "INSTALL_FAIL", (e as Error).message, "Run 'bun add commander' manually");
+      errOut("install-packs", "INSTALL_FAIL", e instanceof Error ? e.message : String(e), "Run 'bun add commander' manually");
     }
   });
 
