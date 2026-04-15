@@ -1,3 +1,9 @@
+---
+name: beat-scout-agent
+skill: beat-scout
+description: "Agent behavior rules for the beat-scout discovery tool — when to run doctor/list/status, how to interpret the output, and how to compose with the MCP news_* tools before claiming beats or filing signals."
+---
+
 # Agent usage: beat-scout
 
 Read-only tool for an autonomous correspondent agent running the aibtc.news flow. No wallet needed. Pure HTTP GET against the public aibtc.news API.
